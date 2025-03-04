@@ -7,9 +7,12 @@
 #include <rand.h>
 #include "arrows.h"
 #include "CodePieces.h"
+#include "TitleScreen.h"
+#include "GameplayMap.h"
 
 uint8_t current_line = 0;
-uint8_t max_lines = 9;
+const uint8_t first_line_offset = 3;
+uint8_t max_lines = 6;
 uint8_t selected_piece = 0;
 uint8_t piece_types = 6;
 const uint16_t base_piece_addr = 352;
@@ -26,7 +29,7 @@ void EnterCode(void)
     memset(pieces, 0, sizeof(pieces));
     for(uint8_t i = 0; i < 4; i++)
     {
-        set_bkg_tile_xy((i * 2) + 3, (current_line + 1) * 2, base_piece_addr);
+        set_bkg_tile_xy((i * 2) + 3, first_line_offset + (current_line * 2), base_piece_addr);
     }
 
     // Set up selection arrows
@@ -34,11 +37,10 @@ void EnterCode(void)
     set_sprite_data(0, 6, Arrows);
     set_sprite_tile(0, 0);
     set_sprite_tile(1, 3);
-    move_sprite(0, 32, 24 + (current_line * 16));
-    move_sprite(1, 32, 40 + (current_line * 16));
+    move_sprite(0, 32, 32 + (current_line * 16));
+    move_sprite(1, 32, 48 + (current_line * 16));
 
     SHOW_SPRITES;
-    SHOW_BKG;
 
     while(1)
     {
@@ -71,7 +73,7 @@ void EnterCode(void)
                 {
                     pieces[selected_piece] = piece_types - 1;
                 }
-                set_bkg_tile_xy((selected_piece * 2) + 3, (current_line + 1) * 2, pieces[selected_piece] + base_piece_addr);
+                set_bkg_tile_xy((selected_piece * 2) + 3, first_line_offset + (current_line * 2), pieces[selected_piece] + base_piece_addr);
                 delay(100);
                 break;
             case J_UP:
@@ -83,7 +85,7 @@ void EnterCode(void)
                 {
                     pieces[selected_piece] = 0;
                 }
-                set_bkg_tile_xy((selected_piece * 2) + 3, (current_line + 1) * 2, pieces[selected_piece] + base_piece_addr);
+                set_bkg_tile_xy((selected_piece * 2) + 3, first_line_offset + (current_line * 2), pieces[selected_piece] + base_piece_addr);
                 delay(100);
                 break;
             case J_START:
@@ -136,13 +138,13 @@ int CheckCode(void)
     {
         // The X offset for the first correct marker is defined as answerStartTile.
         // The X offset for each additional correct marker should be 2 more tiles after that.
-        set_bkg_tile_xy(answerStartTile + (i * 2), (current_line + 1) * 2, correct_addr);
+        set_bkg_tile_xy(answerStartTile + (i * 2), first_line_offset + (current_line * 2), correct_addr);
     }
     for(uint8_t i = 0; i < presentCount; i++)
     {
         // The X offset for the first present marker should be 2 after the last correct marker.
         // The X offset for each additional correct marker should be 2 more tiles after that.
-        set_bkg_tile_xy(answerStartTile + (correctCount * 2) + (i * 2), (current_line + 1) * 2, present_addr);
+        set_bkg_tile_xy(answerStartTile + (correctCount * 2) + (i * 2), first_line_offset + (current_line * 2), present_addr);
     }
 
     return correctCount;
@@ -151,6 +153,17 @@ int CheckCode(void)
 void main(void)
 {
     DISPLAY_ON;
+
+    set_bkg_data(0, TitleScreen_TILE_COUNT, TitleScreen_tiles);
+    set_bkg_tiles(0, 0, 20, 18, TitleScreen_map);
+    SHOW_BKG;
+    while(1)
+    {
+        if(joypad() & J_START)
+        {
+            break;
+        }
+    }
 
     uint16_t seed = LY_REG;
     seed |= (uint16_t)DIV_REG << 8;
@@ -166,10 +179,11 @@ void main(void)
         }
 
         // Set up tile data
-        init_bkg(256); // Clear the background;
+        init_bkg(256); // Clear the background
         set_bkg_data(96, 10, CodePieces);
         font_init();
         font_set(font_load(font_spect));
+        set_bkg_tiles(0, 0, 20, 18, GameplayMap); // Set static display elements.
         
         // Loop until the game is won
         while(correctCount != 4 && current_line < max_lines) 

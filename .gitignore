@@ -11,6 +11,7 @@
 *.ilk
 *.map
 *.exp
+*.noi
 
 # Precompiled Headers
 *.gch
@@ -35,12 +36,14 @@
 *.i*86
 *.x86_64
 *.hex
+*.gb
 
 # Debug files
 *.dSYM/
 *.su
 *.idb
 *.pdb
+*.cdb
 
 # Kernel Module Compile Results
 *.mod*
@@ -50,3 +53,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Other
+.vscode
+.DS_Store
