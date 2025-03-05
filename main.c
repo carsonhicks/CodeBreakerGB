@@ -11,6 +11,8 @@
 #include "TitleScreen.h"
 #include "GameplayMap.h"
 #include "MenuMap.h"
+#include "LoseMap.h"
+#include "WinMap.h"
 
 uint8_t current_line = 0;
 const uint8_t first_line_offset = 3;
@@ -51,7 +53,7 @@ void EnterCode(void)
     {
         input = joypad();
 
-        if(!startDebounce && (input ^ J_START))
+        if(!startDebounce && !(input & J_START))
         {
             startDebounce = true;
         }
@@ -64,7 +66,7 @@ void EnterCode(void)
                 scroll_sprite(1, -16, 0);
                 selected_piece--;
             }
-            delay(100);
+            delay(20);
         }
         else if(input & J_A || input & J_RIGHT)
         {
@@ -74,7 +76,7 @@ void EnterCode(void)
                 scroll_sprite(1, 16, 0);
                 selected_piece++;
             }
-            delay(100);
+            delay(20);
         }
 
         if(input & J_DOWN)
@@ -88,7 +90,7 @@ void EnterCode(void)
                 pieces[selected_piece] = piece_types - 1;
             }
             set_bkg_tile_xy((selected_piece * 2) + 3, first_line_offset + (current_line * 2), pieces[selected_piece] + base_piece_addr);
-            delay(100);
+            delay(20);
         }
         else if(input & J_UP)
         {
@@ -101,13 +103,13 @@ void EnterCode(void)
                 pieces[selected_piece] = 0;
             }
             set_bkg_tile_xy((selected_piece * 2) + 3, first_line_offset + (current_line * 2), pieces[selected_piece] + base_piece_addr);
-            delay(100);
+            delay(20);
         }
 
         if(startDebounce && (input & J_START))
         {
             startDebounce = false;
-            delay(100);
+            delay(20);
             return;
         }
 
@@ -166,6 +168,81 @@ int CheckCode(void)
     return correctCount;
 }
 
+void HelpScreen(void)
+{
+    init_bkg(0); // Clear the background
+    printf("In CodeBreaker you\ntry to guess the\ncode that has been\ngenerated.\n\n\n");
+    printf("A correct piece in\nthe correct locationis marked with a\n\nA correct piece in\nthe wrong location\nis marked with a\n\n");
+    printf("Easy has 4 pieces.\nMedium has 5 pieces.\nHard has 6 pieces.");
+    set_bkg_tile_xy(17, 8, correct_addr);
+    set_bkg_tile_xy(17, 12, present_addr);
+
+    while(1)
+    {
+        input = joypad();
+        if(input & J_START)
+        {
+            delay(20);
+            break;
+        }
+    }
+
+    HIDE_BKG;
+    printf("\n");
+    init_bkg(0);
+    set_bkg_tiles(0, 0, 20, 18, MenuMap);
+    set_sprite_tile(2, 6);
+    move_sprite(2, 48, 56 + (selected_difficulty * 16));
+    SHOW_BKG;
+}
+
+void WinScreen(void)
+{
+    init_bkg(0);
+    set_bkg_tiles(0, 0, 20, 18, WinMap);
+    while(1)
+    {
+        input = joypad();
+        if(!startDebounce && !(input & J_START))
+        {
+            startDebounce = true;
+        }
+        else if(startDebounce && (input & J_START))
+        {
+            startDebounce = false;
+            delay(20);
+            return;
+        }
+    }
+}
+
+void LoseScreen(void)
+{
+    init_bkg(0);
+    set_bkg_tiles(0, 0, 20, 18, LoseMap);
+
+    // Show correct answer
+    for(uint8_t i = 0; i < 4; i++)
+    {
+        set_bkg_tile_xy(7 + i, 9, answer[i] + base_piece_addr);
+    }
+
+    while(1)
+    {
+        input = joypad();
+        if(!startDebounce && (input ^ J_START))
+        {
+            startDebounce = true;
+        }
+        else if(startDebounce && (input & J_START))
+        {
+            startDebounce = false;
+            delay(20);
+            return;
+        }
+    }
+}
+
 void MainMenu(void)
 {
     set_bkg_tiles(0, 0, 20, 18, MenuMap);
@@ -177,7 +254,7 @@ void MainMenu(void)
     {
         input = joypad();
 
-        if(!startDebounce && (input ^ J_START))
+        if(!startDebounce && !(input & J_START))
         {
             startDebounce = true;
         }
@@ -185,7 +262,7 @@ void MainMenu(void)
         if(startDebounce && (input & J_START))
         {
             startDebounce = false;
-            delay(100);
+            delay(20);
             break;
         }
         else if(input & J_DOWN)
@@ -194,7 +271,7 @@ void MainMenu(void)
             {
                 selected_difficulty++;
                 scroll_sprite(2, 0, 16);
-                delay(100);
+                delay(20);
             }
         }
         else if(input & J_UP)
@@ -203,10 +280,15 @@ void MainMenu(void)
             {
                 selected_difficulty--;
                 scroll_sprite(2, 0, -16);
-                delay(100);
+                delay(20);
             }
         }
-
+        else if(input & J_SELECT)
+        {
+            move_sprite(2, 0, 0);
+            HelpScreen();
+            move_sprite(2, 48, 56 + (selected_difficulty * 16));
+        }
         vsync();
     }
 
@@ -238,6 +320,8 @@ void main(void)
     {
         if(joypad() & J_START)
         {
+            startDebounce = false;
+            delay(20);
             break;
         }
     }
@@ -278,10 +362,22 @@ void main(void)
             vsync();
         }
 
-        // Reset the game state and move selection arrow sprites off screen.
-        correctCount = 0;
-        current_line = 0;
+        // Move selection arrow sprites off screen.
         move_sprite(0, 0, 0);
         move_sprite(1, 0, 0);
+
+        // Display win or loss screens
+        if(correctCount < 4)
+        {
+            LoseScreen();
+        }
+        else
+        {
+            WinScreen();
+        }
+        
+        // Reset game state
+        correctCount = 0;
+        current_line = 0;
     }
 }

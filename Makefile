@@ -15,7 +15,6 @@ ifdef GBDK_DEBUG
 	LCCFLAGS += -debug -v
 endif
 
-
 # You can set the name of the .gb ROM file here
 PROJECTNAME    = CodeBreaker
 
