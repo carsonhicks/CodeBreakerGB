@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <rand.h>
+#include <hUGEDriver.h>
 #include "arrows.h"
 #include "CodePieces.h"
 #include "TitleScreen.h"
@@ -27,9 +28,43 @@ uint8_t pieces[4];
 uint8_t answer[4];
 uint8_t correctCount = 0;
 const uint8_t fontTileCount = 96;
-bool startDebounce = false;
 uint8_t input = 0;
+uint8_t lastInput = 0;
 uint8_t selected_difficulty = 0;
+
+extern const hUGESong_t lose;
+extern const hUGESong_t winner;
+
+inline void Sound_StartPress(void)
+{
+    NR10_REG = 0x15;
+    NR11_REG = 0x80;
+    NR12_REG = 0x63;
+    NR13_REG = 0x00;
+    NR14_REG = 0xC5;
+    NR41_REG = 0x01;
+    NR42_REG = 0xF1;
+    NR44_REG = 0x80;
+}
+
+inline void Sound_Scroll(void)
+{
+    NR10_REG = 0x15;
+    NR11_REG = 0xF2;
+    NR12_REG = 0xF0;
+    NR13_REG = 0x00;
+    NR14_REG = 0xC5;
+}
+
+inline void Input(void)
+{
+    while(input == lastInput)
+    {
+        input = joypad();
+        vsync();
+    }
+    lastInput = input;
+}
 
 void EnterCode(void)
 {
@@ -51,12 +86,7 @@ void EnterCode(void)
 
     while(1)
     {
-        input = joypad();
-
-        if(!startDebounce && !(input & J_START))
-        {
-            startDebounce = true;
-        }
+        Input();
 
         if(input & J_B || input & J_LEFT)
         {
@@ -66,7 +96,6 @@ void EnterCode(void)
                 scroll_sprite(1, -16, 0);
                 selected_piece--;
             }
-            delay(20);
         }
         else if(input & J_A || input & J_RIGHT)
         {
@@ -76,10 +105,8 @@ void EnterCode(void)
                 scroll_sprite(1, 16, 0);
                 selected_piece++;
             }
-            delay(20);
         }
-
-        if(input & J_DOWN)
+        else if(input & J_DOWN)
         {
             if(pieces[selected_piece] > 0)
             {
@@ -90,7 +117,7 @@ void EnterCode(void)
                 pieces[selected_piece] = piece_types - 1;
             }
             set_bkg_tile_xy((selected_piece * 2) + 3, first_line_offset + (current_line * 2), pieces[selected_piece] + base_piece_addr);
-            delay(20);
+            Sound_Scroll();
         }
         else if(input & J_UP)
         {
@@ -103,13 +130,12 @@ void EnterCode(void)
                 pieces[selected_piece] = 0;
             }
             set_bkg_tile_xy((selected_piece * 2) + 3, first_line_offset + (current_line * 2), pieces[selected_piece] + base_piece_addr);
-            delay(20);
+            Sound_Scroll();
         }
-
-        if(startDebounce && (input & J_START))
+        else if(input &  J_START)
         {
-            startDebounce = false;
-            delay(20);
+            Sound_StartPress();
+            delay(100);
             return;
         }
 
@@ -179,10 +205,11 @@ void HelpScreen(void)
 
     while(1)
     {
-        input = joypad();
+        Input();
         if(input & J_START)
         {
-            delay(20);
+            Sound_StartPress();
+            delay(100);
             break;
         }
     }
@@ -200,17 +227,27 @@ void WinScreen(void)
 {
     init_bkg(0);
     set_bkg_tiles(0, 0, 20, 18, WinMap);
+
+    __critical
+    {
+        hUGE_init(&winner);
+        add_VBL(hUGE_dosound);
+    }
+
+    delay(2000);
+
+    __critical
+    {
+        remove_VBL(hUGE_dosound);
+    }
+
     while(1)
     {
-        input = joypad();
-        if(!startDebounce && !(input & J_START))
+        Input();
+        if(input & J_START)
         {
-            startDebounce = true;
-        }
-        else if(startDebounce && (input & J_START))
-        {
-            startDebounce = false;
-            delay(20);
+            Sound_StartPress();
+            delay(100);
             return;
         }
     }
@@ -227,17 +264,26 @@ void LoseScreen(void)
         set_bkg_tile_xy(7 + i, 9, answer[i] + base_piece_addr);
     }
 
+    __critical
+    {
+        hUGE_init(&lose);
+        add_VBL(hUGE_dosound);
+    }
+
+    delay(2000);
+
+    __critical
+    {
+        remove_VBL(hUGE_dosound);
+    }
+
     while(1)
     {
-        input = joypad();
-        if(!startDebounce && (input ^ J_START))
+        Input();
+        if(input & J_START)
         {
-            startDebounce = true;
-        }
-        else if(startDebounce && (input & J_START))
-        {
-            startDebounce = false;
-            delay(20);
+            Sound_StartPress();
+            delay(100);
             return;
         }
     }
@@ -252,17 +298,12 @@ void MainMenu(void)
 
     while(1)
     {
-        input = joypad();
+        Input();
 
-        if(!startDebounce && !(input & J_START))
+        if(input & J_START)
         {
-            startDebounce = true;
-        }
-
-        if(startDebounce && (input & J_START))
-        {
-            startDebounce = false;
-            delay(20);
+            Sound_StartPress();
+            delay(100);
             break;
         }
         else if(input & J_DOWN)
@@ -271,7 +312,8 @@ void MainMenu(void)
             {
                 selected_difficulty++;
                 scroll_sprite(2, 0, 16);
-                delay(20);
+                Sound_Scroll();
+                delay(100);
             }
         }
         else if(input & J_UP)
@@ -280,7 +322,8 @@ void MainMenu(void)
             {
                 selected_difficulty--;
                 scroll_sprite(2, 0, -16);
-                delay(20);
+                Sound_Scroll();
+                delay(100);
             }
         }
         else if(input & J_SELECT)
@@ -316,12 +359,16 @@ void main(void)
     set_bkg_tiles(0, 0, 20, 18, TitleScreen_map);
     SHOW_BKG;
 
+    NR52_REG = 0x80; // Enable sound
+    NR51_REG = 0xFF; // Enable all channels
+    NR50_REG = 0x77; // Set left/right vol to max
+
     while(1)
     {
         if(joypad() & J_START)
         {
-            startDebounce = false;
-            delay(20);
+            Sound_StartPress();
+            delay(100);
             break;
         }
     }

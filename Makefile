@@ -9,6 +9,7 @@ ifndef GBDK_HOME
 endif
 
 LCC = $(GBDK_HOME)bin/lcc 
+hUGEDriver = $(GBDK_HOME)lib/gb/hUGEDriver.lib
 
 GBDK_DEBUG = ON
 ifdef GBDK_DEBUG
@@ -30,7 +31,7 @@ compile.bat: Makefile
 
 # Compile and link all source files in a single call to LCC
 $(BINS):	$(CSOURCES) $(ASMSOURCES)
-	$(LCC) $(LCCFLAGS) -o $@ $(CSOURCES) $(ASMSOURCES)
+	$(LCC) $(LCCFLAGS) -I../include -Wl-l$(hUGEDriver) -o $@ $(CSOURCES) $(ASMSOURCES)
 
 clean:
 	rm -f *.o *.lst *.map *.gb *.ihx *.sym *.cdb *.adb *.asm *.noi *.rst
