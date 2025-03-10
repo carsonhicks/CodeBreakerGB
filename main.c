@@ -44,6 +44,7 @@ inline void Sound_StartPress(void)
     NR14_REG = 0xC5;
     NR41_REG = 0x01;
     NR42_REG = 0xF1;
+    NR43_REG = 0x00;
     NR44_REG = 0x80;
 }
 
@@ -168,7 +169,7 @@ int CheckCode(void)
     {
         for(uint8_t j = 0; j < 4; j++)
         {
-            if(pieces[i] == incorrectSpots[j])
+            if(pieces[i] == incorrectSpots[j] && pieces[i] != answer[i])
             {
                 // We've counted this piece as present, so remove it from the spots to check.
                 incorrectSpots[j] = UINT8_MAX;
@@ -261,7 +262,7 @@ void LoseScreen(void)
     // Show correct answer
     for(uint8_t i = 0; i < 4; i++)
     {
-        set_bkg_tile_xy(7 + i, 9, answer[i] + base_piece_addr);
+        set_bkg_tile_xy(8 + i, 9, answer[i] + base_piece_addr);
     }
 
     __critical
